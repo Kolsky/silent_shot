@@ -18,13 +18,20 @@ use std::{
     time::Duration,
     path::PathBuf,
 };
+use single_instance::SingleInstance;
 
 fn get_gallery_dir() -> String {
     get_user_default_gallery_dir()
 }
 
 fn main() {
+    let guid_new = SingleInstance::new("3a9cfdf2-0c48-4e70-bb97-f2a4220c8da1").unwrap();
+    let guid_old = SingleInstance::new("{3A9CFDF2-0C48-4E70-BB97-F2A4220C8DA1}").unwrap();
+    assert!(guid_new.is_single());
+    assert!(guid_old.is_single());
     let save_folder = get_gallery_dir();
+    let save_folder = save_folder.as_str();
+    std::fs::create_dir_all(save_folder).unwrap();
     thread::spawn(move || {
         let save_folder = PathBuf::from(get_gallery_dir());
         loop {
@@ -42,7 +49,7 @@ fn main() {
     loop {
         let keys = retrieve_keys();
         // if keys.vk_escape.is_down() {
-        //     println!("Esc");
+        //     dbg!("Esc");
         //     return;
         // }
         match keys.vk_snapshot.is_down() {
@@ -59,25 +66,25 @@ fn main() {
                 let frame = match capturer.frame() {
                     Ok(f) => f,
                     Err(e) if e.kind() == WouldBlock => {
-                        println!("Skip frame");
+                        dbg!("Skip frame");
                         thread::sleep(frame_time);
                         continue
                     }
                     _ => break
                 };
                 if keys.vk_menu.is_down() {
-                    println!("Alt + PrtScn");
+                    dbg!("Alt + PrtScn");
                     if let Some(rect) = get_active_window_rect() {
                         let (w, h) = crop_frame_and_return_dims(&mut buf, frame, rect, width, height);
-                        save_tga(save_folder.as_str(), buf.as_slice(), w, h);
+                        save_tga(save_folder, buf.as_slice(), w, h);
                     }
                     else {
-                        save_tga(save_folder.as_str(), &frame, width, height);
+                        save_tga(save_folder, &frame, width, height);
                     }
                 }
                 else {
-                    println!("PrtScn");
-                    save_tga(save_folder.as_str(), &frame, width, height);
+                    dbg!("PrtScn");
+                    save_tga(save_folder, &frame, width, height);
                 }
                 snapshot_evt = KeyEvent::Down;
             }
