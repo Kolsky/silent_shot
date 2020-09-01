@@ -30,7 +30,7 @@ pub struct Config {
 const CONFIG_HELP : &str =
 "//(
 //    save_folder: [Default]|Custom(\"C:/path/to/your/dir\"),
-//    Sets folder for screenshots. Default is \"%USERPROFILE/Images/Screenshots\".
+//    Sets folder for screenshots. Default is \"%USERPROFILE%/Images/Screenshots\".
 //
 //    image_format: [Png]|Tga|Both,
 //    Saving .tga does not require separate thread for converting it, .png files are smaller.
