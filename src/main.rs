@@ -1,10 +1,13 @@
 #![windows_subsystem="windows"]
+mod config;
 mod keyboard;
 mod sysnio;
 
-use keyboard::{KeyEvent, VirtualKey, retrieve_keys};
+use config::Config;
+use keyboard::{KeyEvent, retrieve_keys};
 use sysnio::{
     convert_tga_to_png,
+    convert_all_tga_to_png,
     crop_frame_and_return_dims,
     get_active_window_rect,
     get_user_default_gallery_dir,
@@ -30,12 +33,14 @@ fn main() {
     assert!(guid_new.is_single());
     assert!(guid_old.is_single());
     let save_folder = get_gallery_dir();
+    let str_clone = save_folder.clone();
     let save_folder = save_folder.as_str();
+    let _ = dbg!(Config::open_or_create_default("config.ron"));
     std::fs::create_dir_all(save_folder).unwrap();
     thread::spawn(move || {
-        let save_folder = PathBuf::from(get_gallery_dir());
+        let save_folder = str_clone.as_str();
         loop {
-            convert_tga_to_png(&save_folder).unwrap_or_default();
+            convert_all_tga_to_png(save_folder, false).unwrap_or_default();
             thread::sleep(Duration::from_secs(1));
         }
     });

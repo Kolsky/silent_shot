@@ -4,9 +4,9 @@ use winapi::{
 };
 
 pub struct KeyState {
-    pub vk_snapshot: u32,
-    pub vk_menu: u32,
-    //vk_escape: u32,
+    pub vk_snapshot: VirtualKey,
+    pub vk_menu: VirtualKey,
+    //vk_escape: VirtualKey,
 }
 
 #[derive(PartialEq, Eq)]
@@ -16,22 +16,20 @@ pub enum KeyEvent {
     Down
 }
 
-pub trait VirtualKey {
-    fn is_down(&self) -> bool;
-}
+pub struct VirtualKey(u32);
 
-impl VirtualKey for u32 {
-    fn is_down(&self) -> bool {
-        self & 0x8000 != 0
+impl VirtualKey {
+    pub fn is_down(&self) -> bool {
+        self.0 & 0x8000 != 0
     }
 }
 
 pub fn retrieve_keys() -> KeyState {
     unsafe {
         KeyState {
-            vk_snapshot: GetKeyState(VK_SNAPSHOT) as u32,
-            vk_menu: GetKeyState(VK_MENU) as u32,
-            //vk_escape: GetKeyState(VK_ESCAPE) as u32,
+            vk_snapshot: VirtualKey(GetKeyState(VK_SNAPSHOT) as u32),
+            vk_menu: VirtualKey(GetKeyState(VK_MENU) as u32),
+            //vk_escape: VirtualKey(GetKeyState(VK_ESCAPE) as u32),
         }
     }
 }

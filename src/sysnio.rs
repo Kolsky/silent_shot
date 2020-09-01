@@ -12,7 +12,8 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
     fs,
     ffi::OsStr,
-    path::PathBuf,
+    convert::AsRef,
+    path::{PathBuf, Path},
 };
 use scrap::Frame;
 
@@ -23,22 +24,33 @@ fn clamp(value: i32, min: i32, max: i32) -> Option<i32> {
     else { Some(value) }
 }
 
-pub fn convert_tga_to_png(dir: &PathBuf) -> io::Result<()> {
+pub fn convert_all_tga_to_png<T: AsRef<Path>>(dir: T, remove_tga: bool) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
-        let mut path = entry.path();
-        if let Some(x) = path.extension() {
-            if x == OsStr::new("tga") {
-                if let Ok(tga) = image::open(&path) {
-                    fs::remove_file(&path).unwrap_or_default();
-                    path.set_extension("png");
-                    tga.save_with_format(&path, image::ImageFormat::Png).unwrap_or_default();
-                    thread::sleep(Duration::from_millis(100));
-                }
-            }
+        let path = entry.path();
+        if convert_tga_to_png(&path, remove_tga) {
+            thread::sleep(Duration::from_millis(100));
         }
     }
     Ok(())
+}
+
+pub fn convert_tga_to_png<T: AsRef<Path>>(path: T, remove_tga: bool) -> bool {
+    let path = PathBuf::from(path.as_ref());
+    if let Some(x) = path.extension() {
+        if x == OsStr::new("tga") {
+            if let Ok(tga) = image::open(&path) {
+                let mut new_path = path.clone();
+                new_path.set_extension("png");
+                tga.save_with_format(&new_path, image::ImageFormat::Png).unwrap_or_default();
+                if remove_tga { 
+                    fs::remove_file(&path).unwrap_or_default();
+                }
+                return true
+            }
+        }
+    }
+    false
 }
 
 pub fn crop_frame_and_return_dims(buf: &mut Vec<u8>, frame: Frame, rect: RECT, width: usize, height: usize) -> (usize, usize) {
