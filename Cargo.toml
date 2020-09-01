@@ -1,6 +1,6 @@
 [package]
 name = "silent_shot"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Kolsky"]
 edition = "2018"
 

@@ -22,14 +22,28 @@ pub enum ImageFormat {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    save_folder: Opt<String>,
-    image_format: ImageFormat,
-    enable_startup: bool,
+    pub save_folder: Opt<String>,
+    pub image_format: ImageFormat,
+    pub enable_startup: bool,
 }
+
+const CONFIG_HELP : &str =
+"//(
+//    save_folder: [Default]|Custom(\"C:/path/to/your/dir\"),
+//    Sets folder for screenshots. Default is \"%USERPROFILE/Images/Screenshots\".
+//
+//    image_format: [Png]|Tga|Both,
+//    Saving .tga does not require separate thread for converting it, .png files are smaller.
+//
+//    enable_startup: true|[false],
+//    Chooses whether the app should run automatically at Windows startup.
+//)
+
+";
 
 impl Config {
     pub fn open_or_create_default<T: AsRef<Path>>(path: T) -> Self {
-        if let Ok(mut file) = dbg!(File::open(&path)) {
+        if let Ok(mut file) = File::open(&path) {
             let mut contents = String::new();
             if let Ok(_) = file.read_to_string(&mut contents) {
                 dbg!(&contents);
@@ -39,11 +53,12 @@ impl Config {
             }
         }
         let config = Default::default();
-        if let Ok(mut file) = dbg!(OpenOptions::new()
+        if let Ok(mut file) = OpenOptions::new()
             .create_new(true)
             .write(true)
-            .open(&path)) {
-            file.write_all(dbg!(to_string_pretty(&config, Default::default())).unwrap().as_bytes()).unwrap_or_default();
+            .open(&path) {
+            file.write_all(CONFIG_HELP.as_bytes()).unwrap_or_default();    
+            file.write_all(to_string_pretty(&config, Default::default()).unwrap().as_bytes()).unwrap_or_default();
         }
         config
     }

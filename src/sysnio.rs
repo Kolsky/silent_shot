@@ -14,8 +14,28 @@ use std::{
     ffi::OsStr,
     convert::AsRef,
     path::{PathBuf, Path},
+    process::Command
 };
 use scrap::Frame;
+
+pub fn configure_startup(enabled: bool) {
+    let exe_path = format!(r#""{}""#, env::current_exe().unwrap().to_str().unwrap());
+    fn run(cmd: &str, args: &[&str]) {
+        Command::new("reg")
+        .arg(cmd)
+        .arg(r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run")
+        .args(&["/v", "SilentShot"])
+        .args(args)
+        .arg("/f")
+        .output().unwrap();
+    }
+    if enabled {
+        run("add", &["/t", "REG_SZ", "/d", exe_path.as_str()]);
+    }
+    else {
+        run("delete", &[]);
+    }
+}
 
 fn clamp(value: i32, min: i32, max: i32) -> Option<i32> {
     if min > max { None }
@@ -24,18 +44,18 @@ fn clamp(value: i32, min: i32, max: i32) -> Option<i32> {
     else { Some(value) }
 }
 
-pub fn convert_all_tga_to_png<T: AsRef<Path>>(dir: T, remove_tga: bool) -> io::Result<()> {
+pub fn convert_all_tga_to_png<T: AsRef<Path>>(dir: T, preserve_tga: bool) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        if convert_tga_to_png(&path, remove_tga) {
+        if convert_tga_to_png(&path, preserve_tga) {
             thread::sleep(Duration::from_millis(100));
         }
     }
     Ok(())
 }
 
-pub fn convert_tga_to_png<T: AsRef<Path>>(path: T, remove_tga: bool) -> bool {
+pub fn convert_tga_to_png<T: AsRef<Path>>(path: T, preserve_tga: bool) -> bool {
     let path = PathBuf::from(path.as_ref());
     if let Some(x) = path.extension() {
         if x == OsStr::new("tga") {
@@ -43,7 +63,7 @@ pub fn convert_tga_to_png<T: AsRef<Path>>(path: T, remove_tga: bool) -> bool {
                 let mut new_path = path.clone();
                 new_path.set_extension("png");
                 tga.save_with_format(&new_path, image::ImageFormat::Png).unwrap_or_default();
-                if remove_tga { 
+                if !preserve_tga { 
                     fs::remove_file(&path).unwrap_or_default();
                 }
                 return true
@@ -85,13 +105,16 @@ pub fn get_user_default_gallery_dir() -> String {
     format!("{}/Pictures/Screenshots/", env::var("USERPROFILE").unwrap())
 }
 
-pub fn save_tga(save_folder: &str, buffer: &[u8], width: usize, height: usize) -> () {
+pub fn save_tga(save_folder: &str, buffer: &[u8], width: usize, height: usize) -> PathBuf {
+    let mut path = PathBuf::from(save_folder);
+    path.push(format!("{}.tga", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros()));
     image::save_buffer_with_format(
-        format!("{}{}.tga", save_folder, SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros()),
+        &path,
         buffer,
         width as u32,
         height as u32,
         image::ColorType::Bgra8,
         image::ImageFormat::Tga)
         .unwrap_or_else(|e| -> () { println!("{}", e) });
+    path
 }
