@@ -9,6 +9,7 @@ use sysnio::{
     configure_startup,
     convert_tga_to_png,
     convert_all_tga_to_png,
+    crop_full_frame,
     crop_frame_and_return_dims,
     get_active_window_rect,
     get_user_default_gallery_dir,
@@ -105,12 +106,14 @@ fn main() {
                             save_tga(save_folder, buf.as_slice(), w, h)
                         }
                         else {
-                            save_tga(save_folder, &frame, width, height)
+                            crop_full_frame(&mut buf, frame, width, height);
+                            save_tga(save_folder, buf.as_slice(), width, height)
                         }
                     }
                     else {
                         dbg!("PrtScn");
-                        save_tga(save_folder, &frame, width, height)
+                        crop_full_frame(&mut buf, frame, width, height);
+                        save_tga(save_folder, buf.as_slice(), width, height)
                     };
                 if should_send {
                     tx.send(path).unwrap();

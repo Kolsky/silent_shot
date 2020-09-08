@@ -73,6 +73,16 @@ pub fn convert_tga_to_png<T: AsRef<Path>>(path: T, preserve_tga: bool) -> bool {
     false
 }
 
+pub fn crop_full_frame(buf: &mut Vec<u8>, frame: Frame, width: usize, height: usize) {
+    let stride = frame.len() / height;
+    let rows = frame.chunks(stride);
+    buf.clear();
+    for row in rows {
+        let row = &row[..4 * width];
+        buf.extend_from_slice(row);
+    }
+}
+
 pub fn crop_frame_and_return_dims(buf: &mut Vec<u8>, frame: Frame, rect: RECT, width: usize, height: usize) -> (usize, usize) {
     let stride = frame.len() / height;
     let top = clamp(rect.top, 0, height as i32).unwrap() as usize;
