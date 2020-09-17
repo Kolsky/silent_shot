@@ -22,7 +22,7 @@ pub fn configure_startup(enabled: bool) {
     let exe_path = format!(r#""{}""#, env::current_exe().unwrap().to_str().unwrap());
     fn run(cmd: &str, args: &[&str]) {
         Command::new("reg")
-        .arg(cmd)
+        .arg(dbg!(cmd))
         .arg(r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run")
         .args(&["/v", "SilentShot"])
         .args(args)

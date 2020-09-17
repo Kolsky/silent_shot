@@ -1,4 +1,4 @@
-#![windows_subsystem="windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem="windows")]
 mod config;
 mod keyboard;
 mod sysnio;
@@ -22,6 +22,7 @@ use std::{
     thread,
     time::Duration,
     sync::mpsc::{channel, Receiver},
+    path::Path,
 };
 use single_instance::SingleInstance;
 
@@ -48,8 +49,10 @@ fn main() {
     let guid_old = SingleInstance::new("{3A9CFDF2-0C48-4E70-BB97-F2A4220C8DA1}").unwrap();
     assert!(guid_new.is_single());
     assert!(guid_old.is_single());
-    let config = Config::open_or_create_default("config.ron");
-    configure_startup(config.enable_startup);
+    let cwd = dbg!(std::env::current_exe().ok());
+    let config_path = cwd.as_ref().map(Path::new).and_then(Path::parent).map(|p| p.join("config.ron")).unwrap();
+    let config = Config::open_or_create_default(config_path);
+    configure_startup(dbg!(config.enable_startup));
     let save_folder = get_gallery_dir(&config);
     let str_clone = save_folder.clone();
     let save_folder = save_folder.as_str();
@@ -74,10 +77,6 @@ fn main() {
     let should_send = config.image_format != ImageFormat::Tga;
     loop {
         let keys = retrieve_keys();
-        // if keys.vk_escape.is_down() {
-        //     dbg!("Esc");
-        //     return;
-        // }
         match keys.vk_snapshot.is_down() {
             true if snapshot_evt == KeyEvent::Up => {
                 snapshot_evt = KeyEvent::Fire

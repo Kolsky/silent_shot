@@ -1,12 +1,11 @@
 use user32::{GetKeyState};
 use winapi::{
-    um::winuser::{VK_SNAPSHOT, VK_MENU, /*VK_ESCAPE,*/},
+    um::winuser::{VK_SNAPSHOT, VK_MENU},
 };
 
 pub struct KeyState {
     pub vk_snapshot: VirtualKey,
     pub vk_menu: VirtualKey,
-    //vk_escape: VirtualKey,
 }
 
 #[derive(PartialEq, Eq)]
@@ -29,7 +28,6 @@ pub fn retrieve_keys() -> KeyState {
         KeyState {
             vk_snapshot: VirtualKey(GetKeyState(VK_SNAPSHOT) as u32),
             vk_menu: VirtualKey(GetKeyState(VK_MENU) as u32),
-            //vk_escape: VirtualKey(GetKeyState(VK_ESCAPE) as u32),
         }
     }
 }

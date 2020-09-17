@@ -43,10 +43,9 @@ const CONFIG_HELP : &str =
 
 impl Config {
     pub fn open_or_create_default<T: AsRef<Path>>(path: T) -> Self {
-        if let Ok(mut file) = File::open(&path) {
+        if let Ok(mut file) = dbg!(File::open(&path)) {
             let mut contents = String::new();
             if let Ok(_) = file.read_to_string(&mut contents) {
-                dbg!(&contents);
                 if let Ok(config) = from_str(&contents) {
                     return config;
                 }
