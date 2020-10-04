@@ -16,9 +16,8 @@ use sysnio::{
     save_tga,
 };
 
-use scrap::{Display, Capturer};
+use dxgcap::{DXGIManager, CaptureError};
 use std::{
-    io::ErrorKind::WouldBlock,
     thread,
     time::Duration,
     sync::mpsc::{channel, Receiver},
@@ -38,7 +37,10 @@ fn open_image_conversion_thread<'a>(save_folder: String, preserve_tga: bool, rx:
         let save_folder = save_folder.as_str();
         convert_all_tga_to_png(save_folder, true).unwrap_or_default();
         loop {
-            let tga_path = rx.recv().unwrap();
+            let tga_path = match rx.recv() {
+                Ok(path) => path,
+                _ => break,
+            };
             convert_tga_to_png(tga_path, preserve_tga);
         }
     })
@@ -68,11 +70,7 @@ fn main() {
         ImageFormat::Tga => {},
     }
     let frame_time = Duration::from_secs_f32(1.0 / 60.0);
-    let display = Display::primary().unwrap();
-    let mut capturer = Capturer::new(display).unwrap();
-    let width = capturer.width();
-    let height = capturer.height();
-    let mut buf : Vec<u8> = Vec::with_capacity(width * height * 4);
+    let mut capturer = DXGIManager::new(0).unwrap();
     let mut snapshot_evt = KeyEvent::Up;
     let should_send = config.image_format != ImageFormat::Tga;
     loop {
@@ -88,30 +86,36 @@ fn main() {
         }
         match snapshot_evt {
             KeyEvent::Fire => {
-                let frame = match capturer.frame() {
+                use std::time::Instant;
+                let now = Instant::now();
+                let (mut buf, (width, height)) = match capturer.capture_frame_components() {
                     Ok(f) => f,
-                    Err(e) if e.kind() == WouldBlock => {
+                    Err(CaptureError::Timeout) => {
                         dbg!("Skip frame");
-                        thread::sleep(frame_time);
+                        continue
+                    }
+                    Err(CaptureError::AccessLost) => {
+                        dbg!("Refresh capturer");
                         continue
                     }
                     _ => break
                 };
+                dbg!(Instant::now() - now);
                 let path = 
                     if keys.vk_menu.is_down() {
                         dbg!("Alt + PrtScn");
                         if let Some(rect) = get_active_window_rect() {
-                            let (w, h) = crop_frame_and_return_dims(&mut buf, frame, rect, width, height);
+                            let (w, h) = crop_frame_and_return_dims(&mut buf, rect, width, height);
                             save_tga(save_folder, buf.as_slice(), w, h)
                         }
                         else {
-                            crop_full_frame(&mut buf, frame, width, height);
+                            crop_full_frame(&mut buf, width, height);
                             save_tga(save_folder, buf.as_slice(), width, height)
                         }
                     }
                     else {
                         dbg!("PrtScn");
-                        crop_full_frame(&mut buf, frame, width, height);
+                        crop_full_frame(&mut buf, width, height);
                         save_tga(save_folder, buf.as_slice(), width, height)
                     };
                 if should_send {

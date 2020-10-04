@@ -16,7 +16,6 @@ use std::{
     path::{PathBuf, Path},
     process::Command
 };
-use scrap::Frame;
 
 pub fn configure_startup(enabled: bool) {
     let exe_path = format!(r#""{}""#, env::current_exe().unwrap().to_str().unwrap());
@@ -73,28 +72,35 @@ pub fn convert_tga_to_png<T: AsRef<Path>>(path: T, preserve_tga: bool) -> bool {
     false
 }
 
-pub fn crop_full_frame(buf: &mut Vec<u8>, frame: Frame, width: usize, height: usize) {
-    let stride = frame.len() / height;
-    let rows = frame.chunks(stride);
-    buf.clear();
-    for row in rows {
-        let row = &row[..4 * width];
-        buf.extend_from_slice(row);
-    }
+pub fn crop_full_frame(buf: &mut Vec<u8>, width: usize, height: usize) {
+    use std::ptr::copy_nonoverlapping;
+    let stride = buf.len() / height;
+    let row_len = 4 * width;
+    let mut buf_ptr = buf.as_mut_ptr();
+    buf.chunks_mut(stride).map(|row| &row[..row_len]).for_each(|row| {
+        unsafe {
+            copy_nonoverlapping(row.as_ptr(), buf_ptr, row_len);
+            buf_ptr = buf_ptr.add(row_len);
+        }
+    });
+    buf.truncate(row_len * height);
 }
 
-pub fn crop_frame_and_return_dims(buf: &mut Vec<u8>, frame: Frame, rect: RECT, width: usize, height: usize) -> (usize, usize) {
-    let stride = frame.len() / height;
+pub fn crop_frame_and_return_dims(buf: &mut Vec<u8>, rect: RECT, width: usize, height: usize) -> (usize, usize) {
+    use std::ptr::copy_nonoverlapping;
+    let stride = buf.len() / height;
     let top = clamp(rect.top, 0, height as i32).unwrap() as usize;
     let bottom = clamp(rect.bottom - 7, 0, height as i32).unwrap() as usize;
     let left = clamp(rect.left + 7, 0, width as i32).unwrap() as usize * 4;
     let right = clamp(rect.right - 7, 0, width as i32).unwrap() as usize * 4;
-    let rows = frame.chunks(stride).into_iter().take(bottom).skip(top);
-    buf.clear();
-    for row in rows {
-        let row = &row[left..right];
-        buf.extend_from_slice(row);
-    }
+    let row_len = right - left;
+    let mut buf_ptr = buf.as_mut_ptr();
+    buf.chunks_mut(stride).take(bottom).skip(top).map(|row| &row[left..right]).for_each(|row| {
+        unsafe {
+            copy_nonoverlapping(row.as_ptr(), buf_ptr, row_len);
+            buf_ptr = buf_ptr.add(row_len);
+        }
+    });
     ((right - left) / 4, bottom - top)
 }
 
